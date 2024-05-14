@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Vending Machine</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.3.4/dist/web3.min.js"></script> 
+</head>
+<body>
+
+    <h2 id="transactionHashLabel">Transaction Hash:</h2>
+    <p id="transactionHashValue">Awaiting transaction...</p>
+    <button id="addDeliveryButton">Add Delivery</button>
+
+    <script type="module">
+        // 等待DOM内容加载完毕
+        document.addEventListener('DOMContentLoaded', async () => {
+            const button = document.getElementById("addDeliveryButton");
+            if (button) {
+                // 为按钮添加点击事件监听器
+                button.addEventListener("click", async () => {
+                    try {
+                        // 连接到 MetaMask 或本地以太坊节点
+                        const web3 = new Web3(Web3.givenProvider || "http://localhost:8545");
+                        
+                        // 获取用户的账户地址
+                        const accounts = await web3.eth.requestAccounts();
+                  const from = accounts[0];
+
+                  // 智能合约的ABI和地址
+                  const contractABI = [
+                        {
+                          "anonymous": false,
+                          "inputs": [
+                            {
+                              "indexed": true,
+                              "internalType": "uint256",
+                              "name": "deliveryNumber",
+                              "type": "uint256"
+                            },
+                            {
+                              "indexed": false,
+                              "internalType": "uint256",
+                              "name": "pickupTime",
+                              "type": "uint256"
+                            }
+                          ],
+                          "name": "FoodPickedUp",
+                          "type": "event"
+                        },
+                        {
+                          "anonymous": false,
+                          "inputs": [
+                            {
+                              "indexed": true,
+                              "internalType": "uint256",
+                              "name": "deliveryNumber",
+                              "type": "uint256"
+                            },
+                            {
+                              "indexed": false,
+                              "internalType": "uint256",
+                              "name": "deliveryTime",
+                              "type": "uint256"
+                            },
+                            {
+                              "indexed": false,
+                              "internalType": "address",
+                              "name": "addedBy",
+                              "type": "address"
+                            }
+                          ],
+                          "name": "NewFoodDeliveryAdded",
+                          "type": "event"
+                        },
+                        {
+                          "inputs": [
+                            {
+                              "internalType": "uint256",
+                              "name": "",
+                              "type": "uint256"
+                            }
+                          ],
+                          "name": "deliveries",
+                          "outputs": [
+                            {
+                              "internalType": "uint256",
+                              "name": "deliveryNumber",
+                              "type": "uint256"
+                            },
+                            {
+                              "internalType": "uint256",
+                              "name": "deliveryTime",
+                              "type": "uint256"
+                            },
+                            {
+                              "internalType": "uint256",
+                              "name": "pickupTime",
+                              "type": "uint256"
+                            },
+                            {
+                              "internalType": "address",
+                              "name": "addedBy",
+                              "type": "address"
+                            }
+                          ],
+                          "stateMutability": "view",
+                          "type": "function",
+                          "constant": true
+                        },
+                        {
+                          "inputs": [
+                            {
+                              "internalType": "uint256",
+                              "name": "_deliveryNumber",
+                              "type": "uint256"
+                            }
+                          ],
+                          "name": "getFoodDelivery",
+                          "outputs": [
+                            {
+                              "internalType": "uint256",
+                              "name": "",
+                              "type": "uint256"
+                            },
+                            {
+                              "internalType": "uint256",
+                              "name": "",
+                              "type": "uint256"
+                            },
+                            {
+                              "internalType": "uint256",
+                              "name": "",
+                              "type": "uint256"
+                            },
+                            {
+                              "internalType": "address",
+                              "name": "",
+                              "type": "address"
+                            }
+                          ],
+                          "stateMutability": "view",
+                          "type": "function",
+                          "constant": true
+                        },
+                        {
+                          "inputs": [
+                            {
+                              "internalType": "uint256",
+                              "name": "_deliveryNumber",
+                              "type": "uint256"
+                            },
+                            {
+                              "internalType": "uint256",
+                              "name": "_deliveryTime",
+                              "type": "uint256"
+                            }
+                          ],
+                          "name": "addFoodDelivery",
+                          "outputs": [],
+                          "stateMutability": "nonpayable",
+                          "type": "function"
+                        },
+                        {
+                          "inputs": [
+                            {
+                              "internalType": "uint256",
+                              "name": "_deliveryNumber",
+                              "type": "uint256"
+                            }
+                          ],
+                          "name": "pickUpFood",
+                          "outputs": [],
+                          "stateMutability": "nonpayable",
+                          "type": "function"
+                        }
+                      ]
+                  const contractAddress = "0x780189Bc706e7c60be143a92624dA462475377Ef"; // 替换成您的合约地址
+
+                  // 创建智能合约实例
+                  const contract = new web3.eth.Contract(contractABI, contractAddress);
+
+                  // 调用合约的addFoodDelivery方法
+                  const deliveryNumber = Date.now().toString(); // 生成唯一的编号
+                  const tx = await contract.methods.addFoodDelivery(deliveryNumber, Date.now())
+                      .send({ from: from, gas: 3000000 }) // 发送交易
+                      .on('transactionHash', function(hash){
+                                // 交易哈希
+                                console.log('transactionHash', hash);
+                                document.getElementById("transactionHashValue").textContent = "Transaction Hash: " + hash;
+                            })
+                      .on('confirmation', function(confirmationNumber, receipt){
+                                // 交易确认
+                                if(receipt.status === true){
+                                    console.log('Transaction receipt:', receipt);
+                                    // 交易成功
+                                } else {
+                                    console.log('Transaction failed:', receipt);
+                                    // 交易失败
+                                }
+                            })
+                       .on('error', console.error);
+
+                  } catch (error) {
+                  // 交易失败的逻辑
+                  console.error("Error: ", error);
+                  document.getElementById("transactionHashValue").textContent = "Error: " + error.message;
+                  }
+                });
+              }
+            });
+</script>
+
+</body>
+</html>
